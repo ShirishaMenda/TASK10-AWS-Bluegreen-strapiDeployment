@@ -24,11 +24,11 @@ jobs:
       id: login-ecr
 
     - name: Build Docker Image
-      run: docker build -t strapi ./backend
+      run: docker build -t strapi ./strapi
 
     - name: Tag & Push Image to ECR
       run: |
-        IMAGE_URI="${{ steps.login-ecr.outputs.registry }}/strapi-ecr:${{ github.sha }}"
+        IMAGE_URI="${{ steps.login-ecr.outputs.registry }}/ecs-bluegreen-ecr:${{ github.sha }}"
         docker tag strapi $IMAGE_URI
         docker push $IMAGE_URI
         echo $IMAGE_URI > image_uri.txt
