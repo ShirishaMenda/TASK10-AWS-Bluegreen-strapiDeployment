@@ -1,0 +1,40 @@
+name: CI - Build & Push Docker Image
+
+on:
+  push:
+    branches: ["main"]
+
+jobs:
+  build_and_push:
+    runs-on: ubuntu-latest
+
+    steps:
+    - name: Checkout Repository
+      uses: actions/checkout@v4
+
+    - name: Configure AWS Credentials
+      uses: aws-actions/configure-aws-credentials@v4
+      with:
+        aws-access-key-id: ${{ secrets.AWS_ACCESS_KEY_ID }}
+        aws-secret-access-key: ${{ secrets.AWS_SECRET_ACCESS_KEY }}
+        aws-region: us-east-1
+
+    - name: Login to Amazon ECR
+      uses: aws-actions/amazon-ecr-login@v2
+      id: login-ecr
+
+    - name: Build Docker Image
+      run: docker build -t strapi ./backend
+
+    - name: Tag & Push Image to ECR
+      run: |
+        IMAGE_URI="${{ steps.login-ecr.outputs.registry }}/strapi-ecr:${{ github.sha }}"
+        docker tag strapi $IMAGE_URI
+        docker push $IMAGE_URI
+        echo $IMAGE_URI > image_uri.txt
+
+    - name: Upload Image URI for CD Workflow
+      uses: actions/upload-artifact@v4
+      with:
+        name: image_uri
+        path: image_uri.txt

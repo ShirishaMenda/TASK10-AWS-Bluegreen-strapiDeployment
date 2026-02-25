@@ -1,0 +1,59 @@
+name: CD - Terraform Apply
+
+permissions:
+  actions: read
+  contents: read
+
+on:
+  workflow_run:
+    workflows: ["CI - Build & Push Docker Image"]
+    types:
+      - completed
+
+jobs:
+  terraform_apply:
+    if: ${{ github.event.workflow_run.conclusion == 'success' }}
+    runs-on: ubuntu-latest
+
+    steps:
+    - name: Checkout Repository
+      uses: actions/checkout@v4
+
+    - name: Download Image URI from CI Run
+      uses: actions/download-artifact@v4
+      with:
+        name: image_uri
+        path: .
+        run-id: ${{ github.event.workflow_run.id }}
+        github-token: ${{ secrets.GITHUB_TOKEN }}
+
+    - name: Set IMAGE_URI env variable
+      run: |
+        IMAGE_URI=$(cat image_uri.txt)
+        echo "IMAGE_URI=$IMAGE_URI" >> $GITHUB_ENV
+
+    - name: Configure AWS Credentials
+      uses: aws-actions/configure-aws-credentials@v4
+      with:
+        aws-access-key-id: ${{ secrets.AWS_ACCESS_KEY_ID }}
+        aws-secret-access-key: ${{ secrets.AWS_SECRET_ACCESS_KEY }}
+        aws-region: us-east-1
+
+    - name: Setup Terraform
+      uses: hashicorp/setup-terraform@v3
+
+    - name: Terraform Init
+      working-directory: infra
+      run: terraform init
+
+    - name: Terraform Validate
+      working-directory: infra
+      run: terraform validate
+
+    - name: Terraform Plan
+      working-directory: infra
+      run: terraform plan -var="app_image=${{ env.IMAGE_URI }}" -out=tfplan
+
+    - name: Terraform Apply
+      working-directory: infra
+      run: terraform apply -auto-approve tfplan
