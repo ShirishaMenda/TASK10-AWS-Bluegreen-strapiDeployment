@@ -7,8 +7,7 @@ permissions:
 on:
   workflow_run:
     workflows: ["CI - Build & Push Docker Image"]
-    types:
-      - completed
+    types: [completed]
 
 jobs:
   terraform_apply:
@@ -31,6 +30,7 @@ jobs:
       run: |
         IMAGE_URI=$(cat image_uri.txt)
         echo "IMAGE_URI=$IMAGE_URI" >> $GITHUB_ENV
+        echo "Image URI loaded: $IMAGE_URI"
 
     - name: Configure AWS Credentials
       uses: aws-actions/configure-aws-credentials@v4
